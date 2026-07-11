@@ -39,11 +39,17 @@ void UOSCActorSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	OSCServer->OnOscBundleReceived.AddDynamic(this, &UOSCActorSubsystem::OnOscBundleReceived);
 
+	TickHandle = FTSTicker::GetCoreTicker().AddTicker(
+		FTickerDelegate::CreateUObject(this, &UOSCActorSubsystem::TickOSCServer));
+
 	UE_LOG(LogTemp, Log, TEXT("OSCActorSubsystem: OSC server started on port %d"), Settings->OSCReceivePort);
 }
 
 void UOSCActorSubsystem::Deinitialize()
 {
+	FTSTicker::GetCoreTicker().RemoveTicker(TickHandle);
+	TickHandle.Reset();
+
 	if (IsValid(OSCServer))
 	{
 		OSCServer->OnOscBundleReceived.RemoveDynamic(this, &UOSCActorSubsystem::OnOscBundleReceived);
@@ -55,6 +61,16 @@ void UOSCActorSubsystem::Deinitialize()
 	Super::Deinitialize();
 }
 
+bool UOSCActorSubsystem::TickOSCServer(float DeltaTime)
+{
+	if (IsValid(OSCServer))
+	{
+		PRAGMA_DISABLE_DEPRECATION_WARNINGS
+		OSCServer->PumpPacketQueue(nullptr);
+		PRAGMA_ENABLE_DEPRECATION_WARNINGS
+	}
+	return true;
+}
 
 void UOSCActorSubsystem::UpdateActorReference(UActorComponent* Component_)
 {
