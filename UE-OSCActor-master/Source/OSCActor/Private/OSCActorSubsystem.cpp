@@ -160,6 +160,7 @@ void UOSCActorSubsystem::OnOscBundleReceived(const FOSCBundle& Bundle, const FSt
 		{
 			Pair.Value->Params.Reset();
 			Pair.Value->MultiSampleParams.Reset();
+			Pair.Value->MultiSampleNum = 0;
 		}
 	}
 	for (const auto& Key : InvalidKeys)
@@ -247,6 +248,7 @@ void UOSCActorSubsystem::OnOscBundleReceived(const FOSCBundle& Bundle, const FSt
 				UOSCManager::GetAllFloats(Message, Data.Samples);
 
 				Component->MultiSampleParams.Add(ParName, Data);
+				Component->MultiSampleNum = FMath::Max(Component->MultiSampleNum, Data.Samples.Num());
 			}
 		}
 		else if (Comp[0] == "cam")
