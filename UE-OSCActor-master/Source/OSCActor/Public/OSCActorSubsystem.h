@@ -3,7 +3,6 @@
 #pragma once
 
 #include "CoreMinimal.h"
-#include "Containers/Ticker.h"
 #include "OSCActor.h"
 #include "Subsystems/EngineSubsystem.h"
 #include "OSCServer.h"
@@ -50,10 +49,6 @@ protected:
 
 	UPROPERTY()
 	class UOSCServer* OSCServer;
-
-	FTSTicker::FDelegateHandle TickHandle;
-
-	bool TickOSCServer(float DeltaTime);
 
 	UFUNCTION()
 	void OnOscBundleReceived(const FOSCBundle& Bundle, const FString& IPAddress, int32 Port);
