@@ -126,21 +126,15 @@ void UOSCActorSubsystem::RemoveActorReference(UActorComponent* Component_)
 }
 
 // Read active bool from OSC message regardless of whether TD sent float, int32, or bool.
-// UOSCManager::Get* only writes the out-param on a type match, so sentinel values detect success.
 static bool GetActiveBool(const FOSCMessage& Message)
 {
-	constexpr float kNoFloat = -999.0f;
-	constexpr int32 kNoInt   = -999;
+	float F = 0.0f;
+	if (UOSCManager::GetFloat(Message, 0, F)) return F != 0.0f;
 
-	float F = kNoFloat;
-	UOSCManager::GetFloat(Message, 0, F);
-	if (F != kNoFloat) return F != 0.0f;
+	int32 I = 0;
+	if (UOSCManager::GetInt32(Message, 0, I)) return I != 0;
 
-	int32 I = kNoInt;
-	UOSCManager::GetInt32(Message, 0, I);
-	if (I != kNoInt) return I != 0;
-
-	bool B = true;
+	bool B = false;
 	UOSCManager::GetBool(Message, 0, B);
 	return B;
 }
