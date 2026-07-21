@@ -53,6 +53,8 @@ protected:
 
 	FTSTicker::FDelegateHandle TickHandle;
 
+	// TODO: PumpPacketQueue is deprecated in UE5.8 but needed for editor-mode OSC reception.
+	// Remove when UE provides an editor-compatible alternative.
 	bool TickOSCServer(float DeltaTime);
 
 	UFUNCTION()

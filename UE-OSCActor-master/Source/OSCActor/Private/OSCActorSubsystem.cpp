@@ -39,9 +39,6 @@ void UOSCActorSubsystem::Initialize(FSubsystemCollectionBase& Collection)
 
 	OSCServer->OnOscBundleReceived.AddDynamic(this, &UOSCActorSubsystem::OnOscBundleReceived);
 
-	// Use engine-level core ticker to pump OSC packets every frame.
-	// FTickableGameObject has complex conditions in editor mode (requires world tick),
-	// but FTSTicker::GetCoreTicker() fires every engine loop iteration unconditionally.
 	TickHandle = FTSTicker::GetCoreTicker().AddTicker(
 		FTickerDelegate::CreateUObject(this, &UOSCActorSubsystem::TickOSCServer));
 
@@ -68,7 +65,9 @@ bool UOSCActorSubsystem::TickOSCServer(float DeltaTime)
 {
 	if (IsValid(OSCServer))
 	{
+		PRAGMA_DISABLE_DEPRECATION_WARNINGS
 		OSCServer->PumpPacketQueue(nullptr);
+		PRAGMA_ENABLE_DEPRECATION_WARNINGS
 	}
 	return true;
 }
@@ -126,21 +125,15 @@ void UOSCActorSubsystem::RemoveActorReference(UActorComponent* Component_)
 }
 
 // Read active bool from OSC message regardless of whether TD sent float, int32, or bool.
-// UOSCManager::Get* only writes the out-param on a type match, so sentinel values detect success.
 static bool GetActiveBool(const FOSCMessage& Message)
 {
-	constexpr float kNoFloat = -999.0f;
-	constexpr int32 kNoInt   = -999;
+	float F = 0.0f;
+	if (UOSCManager::GetFloat(Message, 0, F)) return F != 0.0f;
 
-	float F = kNoFloat;
-	UOSCManager::GetFloat(Message, 0, F);
-	if (F != kNoFloat) return F != 0.0f;
+	int32 I = 0;
+	if (UOSCManager::GetInt32(Message, 0, I)) return I != 0;
 
-	int32 I = kNoInt;
-	UOSCManager::GetInt32(Message, 0, I);
-	if (I != kNoInt) return I != 0;
-
-	bool B = true;
+	bool B = false;
 	UOSCManager::GetBool(Message, 0, B);
 	return B;
 }
@@ -167,6 +160,7 @@ void UOSCActorSubsystem::OnOscBundleReceived(const FOSCBundle& Bundle, const FSt
 		{
 			Pair.Value->Params.Reset();
 			Pair.Value->MultiSampleParams.Reset();
+			Pair.Value->MultiSampleNum = 0;
 		}
 	}
 	for (const auto& Key : InvalidKeys)
@@ -254,6 +248,7 @@ void UOSCActorSubsystem::OnOscBundleReceived(const FOSCBundle& Bundle, const FSt
 				UOSCManager::GetAllFloats(Message, Data.Samples);
 
 				Component->MultiSampleParams.Add(ParName, Data);
+				Component->MultiSampleNum = FMath::Max(Component->MultiSampleNum, Data.Samples.Num());
 			}
 		}
 		else if (Comp[0] == "cam")
