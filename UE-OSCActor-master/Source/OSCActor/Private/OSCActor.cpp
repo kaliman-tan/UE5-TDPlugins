@@ -234,7 +234,11 @@ void UOSCActorComponent::UpdateInstancedStaticMesh(UInstancedStaticMeshComponent
 			CustomData[i * NumCustomChannels + n] = (*SrcCustomDataChannels[n])[i];
 	});
 
-	InstancedStaticMesh->BatchUpdateInstancesData(0, MultiSampleNum, InstanceDataBuffer.GetData(), true);
+	// bTeleport=true: instance transforms come from OSC as discrete positions, not continuous
+	// physical motion. Without this, newly-added instances (which start at the origin from
+	// AddInstances above) get their first real transform interpreted as a huge one-frame
+	// velocity, producing a motion-vector streak/ghost through TAA/TSR.
+	InstancedStaticMesh->BatchUpdateInstancesData(0, MultiSampleNum, InstanceDataBuffer.GetData(), true, true);
 }
 
 // ===================================================================================
