@@ -49,6 +49,9 @@ void UOSCCineCameraComponent::TickComponent(float DeltaTime, ELevelTick TickType
 AOSCCineCameraActor::AOSCCineCameraActor(const FObjectInitializer& ObjectInitializer)
 	: Super(ObjectInitializer.SetDefaultSubobjectClass<UOSCCineCameraComponent>(TEXT("CameraComponent")))
 {
+	PrimaryActorTick.bCanEverTick = true;
+	PrimaryActorTick.bStartWithTickEnabled = true;
+
 	OSCCineCameraComponent = Cast<UOSCCineCameraComponent>(GetCineCameraComponent());
 }
 

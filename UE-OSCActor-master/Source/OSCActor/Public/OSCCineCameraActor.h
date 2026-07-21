@@ -52,6 +52,15 @@ public:
 	UFUNCTION(BlueprintCallable, Category = "OSCActor")
 	UOSCCineCameraComponent* GetOSCCineCameraComponent() const { return OSCCineCameraComponent; }
 
+protected:
+
+	// Tick in editor (non-PIE) too, mirroring AOSCActor. This lets the Blueprint Event Tick
+	// (which calls CopyCameraSettingToSceneCaptureComponent2D) run in editor mode, so the
+	// SceneCapture->Spout output tracks the camera transform/FOV/PostProcess (incl. Manual
+	// exposure) in editor mode. Without it, editor-mode Spout output falls back to the
+	// SceneCapture's own auto-exposure and lags on lighting changes.
+	virtual bool ShouldTickIfViewportsOnly() const override { return true; }
+
 private:
 
 	class UOSCCineCameraComponent* OSCCineCameraComponent;
