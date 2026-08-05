@@ -89,8 +89,8 @@ void UOSCActorSubsystem::UpdateActorReference(UActorComponent* Component_)
 	{
 		if (!Actor->ObjectName.IsEmpty())
 		{
-			if (UOSCActorComponent** Existing = OSCActorComponentMap.Find(Actor->ObjectName))
-				if (IsValid(*Existing) && IsGameWorldPreferred(*Existing, Actor))
+			if (TWeakObjectPtr<UOSCActorComponent>* Existing = OSCActorComponentMap.Find(Actor->ObjectName))
+				if (Existing->IsValid() && IsGameWorldPreferred(Existing->Get(), Actor))
 					return;
 			OSCActorComponentMap.Add(Actor->ObjectName, Actor);
 		}
@@ -99,8 +99,8 @@ void UOSCActorSubsystem::UpdateActorReference(UActorComponent* Component_)
 	{
 		if (!Camera->ObjectName.IsEmpty())
 		{
-			if (UOSCCineCameraComponent** Existing = OSCCameraComponentMap.Find(Camera->ObjectName))
-				if (IsValid(*Existing) && IsGameWorldPreferred(*Existing, Camera))
+			if (TWeakObjectPtr<UOSCCineCameraComponent>* Existing = OSCCameraComponentMap.Find(Camera->ObjectName))
+				if (Existing->IsValid() && IsGameWorldPreferred(Existing->Get(), Camera))
 					return;
 			OSCCameraComponentMap.Add(Camera->ObjectName, Camera);
 		}
@@ -112,30 +112,32 @@ void UOSCActorSubsystem::RemoveActorReference(UActorComponent* Component_)
 	if (UOSCActorComponent* Actor = Cast<UOSCActorComponent>(Component_))
 	{
 		// Only remove if THIS component is the registered one (not a PIE vs editor mismatch)
-		UOSCActorComponent** Existing = OSCActorComponentMap.Find(Actor->ObjectName);
-		if (Existing && *Existing == Actor)
+		TWeakObjectPtr<UOSCActorComponent>* Existing = OSCActorComponentMap.Find(Actor->ObjectName);
+		if (Existing && Existing->Get() == Actor)
 			OSCActorComponentMap.Remove(Actor->ObjectName);
 	}
 	else if (UOSCCineCameraComponent* Camera = Cast<UOSCCineCameraComponent>(Component_))
 	{
-		UOSCCineCameraComponent** Existing = OSCCameraComponentMap.Find(Camera->ObjectName);
-		if (Existing && *Existing == Camera)
+		TWeakObjectPtr<UOSCCineCameraComponent>* Existing = OSCCameraComponentMap.Find(Camera->ObjectName);
+		if (Existing && Existing->Get() == Camera)
 			OSCCameraComponentMap.Remove(Camera->ObjectName);
 	}
 }
 
 // Read active bool from OSC message regardless of whether TD sent float, int32, or bool.
+// Bool is checked first since that's what TD sends in practice; GetFloat/GetInt32 log a
+// warning on every type mismatch, so trying them first floods the log when TD sends bool.
 static bool GetActiveBool(const FOSCMessage& Message)
 {
+	bool B = false;
+	if (UOSCManager::GetBool(Message, 0, B)) return B;
+
 	float F = 0.0f;
 	if (UOSCManager::GetFloat(Message, 0, F)) return F != 0.0f;
 
 	int32 I = 0;
-	if (UOSCManager::GetInt32(Message, 0, I)) return I != 0;
-
-	bool B = false;
-	UOSCManager::GetBool(Message, 0, B);
-	return B;
+	UOSCManager::GetInt32(Message, 0, I);
+	return I != 0;
 }
 
 void UOSCActorSubsystem::OnOscBundleReceived(const FOSCBundle& Bundle, const FString& IPAddress, int32 Port)
@@ -154,7 +156,7 @@ void UOSCActorSubsystem::OnOscBundleReceived(const FOSCBundle& Bundle, const FSt
 	TArray<FString> InvalidKeys;
 	for (auto& Pair : OSCActorComponentMap)
 	{
-		if (!IsValid(Pair.Value))
+		if (!Pair.Value.IsValid())
 			InvalidKeys.Add(Pair.Key);
 		else
 		{
@@ -184,12 +186,10 @@ void UOSCActorSubsystem::OnOscBundleReceived(const FOSCBundle& Bundle, const FSt
 				continue;
 
 			auto It = OSCActorComponentMap.Find(Name);
-			if (!It)
+			if (!It || !It->IsValid())
 				continue;
 
-			UOSCActorComponent* Component = *It;
-			if (!IsValid(Component))
-				continue;
+			UOSCActorComponent* Component = It->Get();
 
 			AActor* Actor = Component->GetOwner();
 			if (!IsValid(Actor))
@@ -257,12 +257,10 @@ void UOSCActorSubsystem::OnOscBundleReceived(const FOSCBundle& Bundle, const FSt
 				continue;
 
 			auto It = OSCCameraComponentMap.Find(Name);
-			if (!It)
+			if (!It || !It->IsValid())
 				continue;
 
-			UOSCCineCameraComponent* OSCCameraCompoent = *It;
-			if (!IsValid(OSCCameraCompoent))
-				continue;
+			UOSCCineCameraComponent* OSCCameraCompoent = It->Get();
 
 			ACineCameraActor* Camera = Cast<ACineCameraActor>(OSCCameraCompoent->GetOwner());
 			if (!IsValid(Camera))
@@ -344,7 +342,7 @@ void UOSCActorSubsystem::OnOscBundleReceived(const FOSCBundle& Bundle, const FSt
 	// Update MultiSampleNum to minimum amount of Samples
 	for (auto& Iter : OSCActorComponentMap)
 	{
-		auto O = Iter.Value;
+		UOSCActorComponent* O = Iter.Value.Get();
 		if (!IsValid(O))
 			continue;
 

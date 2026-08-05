@@ -45,8 +45,10 @@ public:
 
 protected:
 
-	TMap<FString, UOSCActorComponent*> OSCActorComponentMap;
-	TMap<FString, UOSCCineCameraComponent*> OSCCameraComponentMap;
+	// TWeakObjectPtr (not raw pointers) so a destroyed component (e.g. PIE stop) never
+	// leaves a dangling pointer here; IsValid()/Get() stay safe even after the object is freed.
+	TMap<FString, TWeakObjectPtr<UOSCActorComponent>> OSCActorComponentMap;
+	TMap<FString, TWeakObjectPtr<UOSCCineCameraComponent>> OSCCameraComponentMap;
 
 	UPROPERTY()
 	class UOSCServer* OSCServer;
