@@ -193,6 +193,31 @@ void USpoutReceiverComponent::DoSpoutReceive()
 		OnConnected.Broadcast();
 	}
 
+	// CopyResource requires the destination to match the sender's size and format exactly.
+	// It returns void, so on a mismatch it silently copies nothing and the render target
+	// just stays black. Mirror what the sender does and conform the target to the source.
+	EPixelFormat WantFormat = PF_Unknown;
+	switch (Fmt)
+	{
+	case DXGI_FORMAT_B8G8R8A8_UNORM:     WantFormat = PF_B8G8R8A8;      break;
+	case DXGI_FORMAT_R16G16B16A16_FLOAT: WantFormat = PF_FloatRGBA;     break;
+	case DXGI_FORMAT_R32G32B32A32_FLOAT: WantFormat = PF_A32B32G32R32F; break;
+	case DXGI_FORMAT_R10G10B10A2_UNORM:  WantFormat = PF_A2B10G10R10;   break;
+	default: break;
+	}
+
+	if (WantFormat != PF_Unknown
+		&& (OutputRenderTarget->SizeX != static_cast<int32>(W)
+			|| OutputRenderTarget->SizeY != static_cast<int32>(H)
+			|| OutputRenderTarget->GetFormat() != WantFormat))
+	{
+		UE_LOG(LogTemp, Log, TEXT("Spout2Media: conforming '%s' render target to sender '%s' (%ux%u, DXGI format %d)"),
+			*OutputRenderTarget->GetName(), *SenderName, W, H, static_cast<int32>(Fmt));
+
+		OutputRenderTarget->InitCustomFormat(W, H, WantFormat, OutputRenderTarget->bForceLinearGamma != 0);
+		OutputRenderTarget->UpdateResourceImmediate(true);
+	}
+
 	FTextureRenderTargetResource* RTResource = OutputRenderTarget->GameThread_GetRenderTargetResource();
 	if (!RTResource) return;
 
